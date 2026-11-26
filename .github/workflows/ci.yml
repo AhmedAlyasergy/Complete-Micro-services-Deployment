@@ -75,9 +75,29 @@ jobs:
           INTERNAL_API_KEY: test-internal-key
         run: npm test
 
+  gitleaks:
+    name: Gitleaks Secret Scan
+    needs: test
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan repository for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build-and-push:
     name: Build and Push ${{ matrix.service }}
-    needs: test
+    needs: [test, gitleaks]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
@@ -148,24 +168,3 @@ jobs:
           exit-code: '1'
           severity: CRITICAL
           vuln-type: os,library
-
-
-  gitleaks:
-    name: Gitleaks Secret Scan
-    needs: test
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      pull-requests: read
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Scan repository for secrets
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
