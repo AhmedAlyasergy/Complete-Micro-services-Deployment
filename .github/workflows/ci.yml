@@ -148,3 +148,24 @@ jobs:
           exit-code: '1'
           severity: CRITICAL
           vuln-type: os,library
+
+
+  gitleaks:
+    name: Gitleaks Secret Scan
+    needs: test
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan repository for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
