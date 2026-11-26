@@ -1,11 +1,23 @@
+
 # Build stage: production dependencies only
 FROM node:20-alpine AS deps
+
 WORKDIR /app
+
+# Update npm to a version compatible with Node.js 20
+# and containing the patched tar package
+RUN npm install -g npm@10.9.9
+
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
+
 # Runtime stage
 FROM node:20-alpine
+
+# Update npm in the final image too
+RUN npm install -g npm@10.9.9
+
 ENV NODE_ENV=production
 WORKDIR /app
 
