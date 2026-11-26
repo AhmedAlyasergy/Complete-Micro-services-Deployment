@@ -1,0 +1,11 @@
+ecommerce is installed in namespace {{ .Release.Namespace }}.
+
+Watch the pods start (databases first, then the services):
+  kubectl get pods -n {{ .Release.Namespace }} -w
+
+Reach the API through the Ingress:
+  kubectl port-forward -n ingress-nginx svc/ingress-nginx-controller 8082:80
+  then open http://localhost:8082/api/products
+
+Auto scaling:
+  kubectl get hpa -n {{ .Release.Namespace }}

@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders-service
+  namespace: ecommerce
+  labels:
+    app: orders-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: orders-service
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: orders-service
+        tier: backend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      initContainers:
+        # Wait for the database so the service doesn't crash on startup.
+        - name: wait-for-db
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "until pg_isready -h orders-db -p 5432 -U postgres; do echo waiting for orders-db; sleep 2; done"]
+          securityContext:
+            allowPrivilegeEscalation: false
+      containers:
+        - name: orders-service
+          image: ecommerce/orders-service:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3003
+          envFrom:
+            - configMapRef:
+                name: orders-config
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ecommerce-secrets
+                  key: db-password
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ecommerce-secrets
+                  key: jwt-secret
+            - name: INTERNAL_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ecommerce-secrets
+                  key: internal-api-key
+          # startup: give the app time to run migrations before other probes begin
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 3
+            failureThreshold: 20
+          # liveness: restart the container if the process hangs
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # readiness: only send traffic when the database (and dependencies) answer
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orders-service
+  namespace: ecommerce
+  labels:
+    app: orders-service
+spec:
+  type: ClusterIP
+  selector:
+    app: orders-service
+  ports:
+    - name: http
+      port: 3003
+      targetPort: http

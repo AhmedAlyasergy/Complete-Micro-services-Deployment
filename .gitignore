@@ -6,3 +6,6 @@ npm-debug.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# Real Kubernetes secrets (copy of secrets.example.yaml)
+kubernetes/secrets.yaml

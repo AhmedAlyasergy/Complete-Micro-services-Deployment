@@ -1,0 +1,16 @@
+# Non-secret settings for orders-service. Secrets come from ecommerce-secrets.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: orders-config
+  namespace: ecommerce
+  labels:
+    app: orders-service
+data:
+  PORT: "3003"
+  DB_HOST: "orders-db"
+  DB_PORT: "5432"
+  DB_NAME: "orders_db"
+  DB_USER: "postgres"
+  PRODUCTS_URL: "http://products-service:3002"
+  PRODUCTS_TIMEOUT_MS: "3000"
