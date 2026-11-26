@@ -1,0 +1,20 @@
+{{- range $name, $svc := .Values.services }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-config
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app: {{ $name }}-service
+    {{- include "ecommerce.labels" $ | nindent 4 }}
+data:
+  PORT: {{ $svc.port | quote }}
+  DB_HOST: {{ printf "%s-db" $name | quote }}
+  DB_PORT: "5432"
+  DB_NAME: {{ $svc.dbName | quote }}
+  DB_USER: {{ $.Values.database.user | quote }}
+  {{- range $key, $value := $svc.config }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+{{- end }}

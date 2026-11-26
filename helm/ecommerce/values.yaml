@@ -1,0 +1,84 @@
+# Default values for the ecommerce chart.
+# Install:  helm upgrade --install ecommerce helm/ecommerce -n ecommerce --create-namespace
+# Override per environment with -f my-values.yaml or --set key=value.
+
+image:
+  repository: ecommerce          # images are <repository>/<name>-service:<tag>
+  tag: local                     # CI sets this to the commit SHA
+  pullPolicy: IfNotPresent
+
+# Secrets. For local use the defaults are fine; in CI pass the real values with
+#   --set secrets.jwtSecret=$JWT_SECRET ...
+# or set existingSecret to the name of a Secret you created yourself
+# (keys: db-password, jwt-secret, internal-api-key, admin-password).
+secrets:
+  existingSecret: ""
+  dbPassword: change-me-db-password
+  jwtSecret: change-me-jwt-secret
+  internalApiKey: change-me-internal-key
+  adminPassword: change-me-admin-password
+
+database:
+  image: postgres:16-alpine
+  user: postgres
+  storage: 1Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Applied to every service unless the service overrides it.
+defaults:
+  replicas: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+
+services:
+  auth:
+    port: 3001
+    dbName: auth_db
+    path: /api/auth
+    config:
+      JWT_EXPIRES_IN: "1h"
+      ADMIN_EMAIL: "admin@shop.com"
+    secretEnv:
+      JWT_SECRET: jwt-secret
+      ADMIN_PASSWORD: admin-password
+
+  products:
+    port: 3002
+    dbName: products_db
+    path: /api/products
+    config: {}
+    secretEnv:
+      JWT_SECRET: jwt-secret
+      INTERNAL_API_KEY: internal-api-key
+
+  orders:
+    port: 3003
+    dbName: orders_db
+    path: /api/orders
+    config:
+      PRODUCTS_URL: "http://products-service:3002"
+      PRODUCTS_TIMEOUT_MS: "3000"
+    secretEnv:
+      JWT_SECRET: jwt-secret
+      INTERNAL_API_KEY: internal-api-key
+
+ingress:
+  enabled: true
+  className: nginx
+  host: ""                       # empty = any host (fine for a local cluster)

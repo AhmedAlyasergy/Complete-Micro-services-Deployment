@@ -1,0 +1,6 @@
+apiVersion: v2
+name: ecommerce
+description: Cloud-native e-commerce system - auth, products and orders services, each with its own PostgreSQL, behind one Ingress.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
