@@ -1,0 +1,75 @@
+
+name: CI - Tests
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: Test ${{ matrix.service }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: auth-service
+            db_name: auth_db_test
+          - service: products-service
+            db_name: products_db_test
+          - service: orders-service
+            db_name: orders_db_test
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: services/${{ matrix.service }}/package-lock.json
+
+      - name: Create test databases
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d postgres -c "CREATE DATABASE auth_db_test;"
+          psql -h localhost -U postgres -d postgres -c "CREATE DATABASE products_db_test;"
+          psql -h localhost -U postgres -d postgres -c "CREATE DATABASE orders_db_test;"
+
+      - name: Install dependencies
+        working-directory: services/${{ matrix.service }}
+        run: npm ci
+
+      - name: Run tests
+        working-directory: services/${{ matrix.service }}
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          DB_NAME_TEST: ${{ matrix.db_name }}
+          JWT_SECRET: test-secret
+          INTERNAL_API_KEY: test-internal-key
+        run: npm test
